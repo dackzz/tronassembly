@@ -1,96 +1,117 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/VsnOOl0p)
-# Lab Org. y Arq. de Computadoras
+# Proyecto ARMv8 Framebuffer en Raspberry Pi 3 (QEMU)
 
-* Configuración de pantalla: `640x480` pixels, formato `ARGB` 32 bits.
+Este proyecto implementa un programa en **Assembly ARMv8** que utiliza el framebuffer de la Raspberry Pi 3 para dibujar gráficos en pantalla.  
+El entorno de desarrollo está pensado tanto para emular en **QEMU** como para ejecutarse en una **Raspberry Pi real**.
+
+---
+
+## Configuración de pantalla
+
+* Resolución: `640x480` píxeles
+* Formato: `ARGB` 32 bits
 * El registro `X0` contiene la dirección base del FrameBuffer (Pixel 1).
-* El código de cada consigna debe ser escrito en el archivo _app.s_.
-* El archivo _start.s_ contiene la inicialización del FrameBuffer **(NO EDITAR)**, al finalizar llama a _app.s_.
-* El código de ejemplo pinta toda la pantalla un solo color.
+* El código de cada consigna debe ser escrito en el archivo **app.s**.
+* El archivo **start.s** contiene la inicialización del FrameBuffer **(NO EDITAR)**; al finalizar llama a **app.s**.
+* El código de ejemplo pinta toda la pantalla de un solo color.
 
-## Estructura
+---
 
-* **[app.s](app.s)** Este archivo contiene a apliación. Todo el hardware ya está inicializado anteriormente.
-* **[start.s](start.s)** Este archivo realiza la inicialización del hardware.
-* **[Makefile](Makefile)** Archivo que describe como construir el software _(que ensamblador utilizar, que salida generar, etc)_.
-* **[memmap](memmap)** Este archivo contiene la descripción de la distribución de la memoria del programa y donde colocar cada sección.
+## Estructura del proyecto
 
-* **README.md** este archivo.
+* **[app.s](app.s)** → Contiene la aplicación (el código de usuario). Todo el hardware ya está inicializado previamente.
+* **[start.s](start.s)** → Inicialización del hardware y configuración del framebuffer.
+* **[Makefile](Makefile)** → Describe cómo construir el software (qué ensamblador utilizar, qué salida generar, etc.).
+* **[memmap](memmap)** → Descripción de la distribución de la memoria del programa y dónde colocar cada sección.
+* **[shapes.s](shapes.s)** → Rutinas gráficas de bajo nivel (dibujar píxeles, rectángulos, circunferencias, etc.).
+* **[drawings.s](drawings.s)** → Funciones de dibujo más complejas (moto, pisos, fondo, etc.).
+* **[buildings.s](buildings.s)** → Funciones para dibujar edificios y nave.
+* **[size.s](size.s)** → Constantes globales de pantalla.
+* **README.md** → Este archivo.
 
-## Uso
+---
 
-El archivo _Makefile_ contiene lo necesario para construir el proyecto.
-Se pueden utilizar otros archivos **.s** si les resulta práctico para emprolijar el código y el Makefile los ensamblará.
+## Requisitos
 
-**Para correr el proyecto ejecutar**
+Antes de compilar el proyecto, asegúrate de tener instaladas las siguientes dependencias:
 
-```bash
-$ make runQEMU
-```
-Esto construirá el código y ejecutará qemu para su emulación.
-
-Si qemu se queja con un error parecido a `qemu-system-aarch64: unsupported machine type`, prueben cambiar `raspi3` por `raspi3b` en la receta `runQEMU` del **Makefile** (línea 23 si no lo cambiaron).
-
-**Para correr el gpio manager**
+### Toolchain cruzado para ARM64
 
 ```bash
-$ make runGPIOM
+sudo apt update
+sudo apt install gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
 ```
 
-Ejecutar *luego* de haber corrido qemu.
+### QEMU (para emulación)
 
-## Como correr qemu y gcc usando Docker containers
-
-Los containers son maquinas virtuales livianas que permiten correr procesos individuales como el qemu y gcc.
-
-Para seguir esta guia primero tienen que instala docker y asegurarse que el usuario que vayan a usar tenga permiso para correr docker (ie dockergrp) o ser root
-
-### Linux
- * Para construir el container hacer
 ```bash
-docker build -t famaf/rpi-qemu .
-```
- * Para arrancarlo
-```bash
-xhost +
-cd rpi-asm-framebuffer
-docker run -dt --name rpi-qemu --rm -v $(pwd):/local --privileged -e "DISPLAY=${DISPLAY:-:0.0}" -v /tmp/.X11-unix:/tmp/.X11-unix -v "$HOME/.Xauthority:/root/.Xauthority:rw" famaf/rpi-qemu
-```
- * Para correr el emulador y el simulador de I/O
-```bash
-docker exec -d rpi-qemu make runQEMU
-docker exec -it rpi-qemu make runGPIOM
-```
- * Para terminar el container
-```bash
-docker kill rpi-qemu
+sudo apt install qemu-system-arm qemu-system-misc
 ```
 
-### MacOS
-En MacOS primero tienen que [instalar un X server](https://medium.com/@mreichelt/how-to-show-x11-windows-within-docker-on-mac-50759f4b65cb) (i.e. XQuartz)
- * Para construir el container hacer
+Verifica que estén instalados con:
+
 ```bash
-docker build -t famaf/rpi-qemu .
+aarch64-linux-gnu-as --version
+qemu-system-aarch64 --version
 ```
- * Para arrancarlo
+
+---
+
+## Compilación
+
+Para compilar el proyecto simplemente ejecuta:
+
 ```bash
-xhost +
-cd rpi-asm-framebuffer
-docker run -dt --name rpi-qemu --rm -v $(pwd):/local --privileged -e "DISPLAY=host.docker.internal:0" -v /tmp/.X11-unix:/tmp/.X11-unix -v "$HOME/.Xauthority:/root/.Xauthority:rw" famaf/rpi-qemu
+make
 ```
- * Para correr el emulador y el simulador de I/O
+
+Esto genera el archivo `kernel8.img` listo para ejecutarse.
+
+---
+
+## Ejecución en QEMU
+
+Ejecuta el siguiente comando:
+
 ```bash
-docker exec -d rpi-qemu make runQEMU
-docker exec -it rpi-qemu make runGPIOM
+make runQEMU
 ```
- * Para terminar el container
+
+Esto construirá el código y lanzará QEMU para la emulación.
+
+⚠️ Si QEMU muestra un error parecido a:
+
+```
+qemu-system-aarch64: unsupported machine type
+```
+
+prueba cambiar `raspi3` por `raspi3b` en la receta `runQEMU` del **Makefile** (línea 23 si no lo modificaste).
+
+---
+
+## Ejecución en Raspberry Pi real
+
+1. Compila el proyecto en tu PC host:
+   ```bash
+   make
+   ```
+
+2. Copia el archivo `kernel8.img` a la partición de arranque de la tarjeta SD de tu Raspberry Pi:
+   ```bash
+   cp kernel8.img /media/$USER/boot/
+   ```
+
+3. Inserta la tarjeta SD en la Raspberry Pi y enciéndela.
+
+---
+
+## GPIO Manager (opcional)
+
+El Makefile también incluye una regla para ejecutar el GPIO Manager:
+
 ```bash
-docker kill rpi-qemu
+make runGPIOM
 ```
-----------------------------------
-### Otros comandos utiles
-```bash
-# Correr el container en modo interactivo
-docker run -it --rm -v $(pwd):/local --privileged -e "DISPLAY=${DISPLAY:-:0.0}" -v /tmp/.X11-unix:/tmp/.X11-unix -v "$HOME/.Xauthority:/root/.Xauthority:rw" famaf/rpi-qemu
-# Correr un shell en el container
-docker exec -it rpi-qemu /bin/bash
-```
+
+Debe ejecutarse **después** de haber corrido QEMU.
+
+---
